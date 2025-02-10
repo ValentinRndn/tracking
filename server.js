@@ -11,6 +11,10 @@ const server = http.createServer(app);
 
 const wss = new WebSocket.Server({ server });
 
+app.get('/config', (req, res) => {
+    res.json({ wsServer: process.env.WS_SERVER });
+});
+
 app.use(express.static('./'));
 
 let users = {};
