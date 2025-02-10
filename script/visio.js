@@ -1,6 +1,57 @@
 const localVideo = document.getElementById('local-video');
 const remoteVideosContainer = document.getElementById('remote-videos');
-const socket = new WebSocket('ws://localhost:5000'); // Connexion WebSocket
+fetch('/config')
+    .then(response => response.json())
+    .then(config => {
+        const socket = new WebSocket(config.wsServer); // Connexion dynamique
+
+        // Ajoute ici tout le code WebSocket qui était en dessous
+        socket.onmessage = (event) => {
+            const data = JSON.parse(event.data);
+            const { type, offer, answer, candidate, userId } = data;
+
+            if (type === 'offer') {
+                const peerConnection = new RTCPeerConnection();
+                peerConnections[userId] = peerConnection;
+
+                localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
+                peerConnection.setRemoteDescription(new RTCSessionDescription(offer));
+
+                peerConnection.createAnswer()
+                    .then(answer => peerConnection.setLocalDescription(answer))
+                    .then(() => {
+                        socket.send(JSON.stringify({ type: 'answer', answer: peerConnection.localDescription, userId }));
+                    });
+
+                peerConnection.onicecandidate = (event) => {
+                    if (event.candidate) {
+                        socket.send(JSON.stringify({
+                            type: 'candidate',
+                            candidate: event.candidate,
+                            userId,
+                        }));
+                    }
+                };
+
+                peerConnection.ontrack = (event) => {
+                    const remoteVideo = document.createElement('video');
+                    remoteVideo.srcObject = event.streams[0];
+                    remoteVideo.autoplay = true;
+                    remoteVideosContainer.appendChild(remoteVideo);
+                };
+            }
+
+            if (type === 'answer') {
+                peerConnections[userId].setRemoteDescription(new RTCSessionDescription(answer));
+            }
+
+            if (type === 'candidate') {
+                peerConnections[userId].addIceCandidate(new RTCIceCandidate(candidate));
+            }
+        };
+    })
+    .catch(error => console.error("Erreur lors de la récupération de la config :", error));
+
 
 let localStream;
 let peerConnections = {}; // Connexions avec les autres utilisateurs
