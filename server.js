@@ -1,23 +1,20 @@
+require('dotenv').config();  
 const express = require('express');
 const http = require('http');
 const WebSocket = require('ws');
 
 const app = express();
-const port = 5000;
+const port = process.env.PORT || 5000;  
+const hostUrl = process.env.HOST_URL || 'localhost';  
 
-// Créer un serveur HTTP
 const server = http.createServer(app);
 
-// Créer un serveur WebSocket
 const wss = new WebSocket.Server({ server });
 
-// Utiliser Express pour servir les fichiers statiques
 app.use(express.static('./'));
 
-// Stocker les connexions des utilisateurs
 let users = {};
 
-// Gestion des connexions WebSocket
 wss.on('connection', (ws) => {
     console.log('Un utilisateur est connecté.');
 
@@ -26,11 +23,9 @@ wss.on('connection', (ws) => {
 
         switch (data.type) {
             case 'updatePosition':
-                // Mise à jour de la position d'un utilisateur
                 const { lat, lng } = data;
                 users[ws] = { lat, lng };
 
-                // Envoyer les mises à jour à tous les autres utilisateurs
                 for (const client of wss.clients) {
                     if (client !== ws && client.readyState === WebSocket.OPEN) {
                         client.send(JSON.stringify({
@@ -46,7 +41,6 @@ wss.on('connection', (ws) => {
             case 'offer':
             case 'answer':
             case 'candidate':
-                // Relayer les messages WebRTC à l'utilisateur cible
                 for (const client of wss.clients) {
                     if (client.readyState === WebSocket.OPEN) {
                         client.send(JSON.stringify(data));
@@ -65,7 +59,6 @@ wss.on('connection', (ws) => {
     });
 });
 
-// Démarrer le serveur Express
 server.listen(port, () => {
-    console.log(`Serveur express en écoute sur http://localhost:${port}`);
+    console.log(`Serveur express en écoute sur http://${hostUrl}:${port}`);
 });
