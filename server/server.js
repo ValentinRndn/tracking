@@ -11,6 +11,15 @@ const server = http.createServer(app);
 
 const wss = new WebSocket.Server({ server });
 
+
+// Définir le dossier client comme public
+app.use(express.static(path.join(__dirname, 'client')));
+
+// Rediriger les requêtes vers index.html
+app.get('*', (req, res) => {
+    res.sendFile(path.join(__dirname, 'client', 'index.html'));
+});
+
 app.get('/config', (req, res) => {
     res.json({ wsServer: process.env.WS_SERVER });
 });
