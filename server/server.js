@@ -4,7 +4,6 @@ const http = require('http');
 const WebSocket = require('ws');
 const path = require('path');
 
-
 const app = express();
 const port = process.env.PORT || 5000;  
 const hostUrl = process.env.HOST_URL || 'localhost';  
@@ -13,20 +12,18 @@ const server = http.createServer(app);
 
 const wss = new WebSocket.Server({ server });
 
-
 // Définir le dossier client comme public
 app.use(express.static('/var/www/tracking/client'));
 
-
 // Rediriger les requêtes vers index.html
 app.get('*', (req, res) => {
-    res.sendFile(path.join(__dirname, 'client', 'index.html'));
+    // Utiliser le chemin absolu vers index.html dans /var/www/tracking/client
+    res.sendFile(path.join('/var/www/tracking/client', 'index.html'));
 });
 
 app.get('/config', (req, res) => {
     res.json({ wsServer: process.env.WS_SERVER });
 });
-
 
 let users = {};
 
