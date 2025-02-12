@@ -15,7 +15,8 @@ const wss = new WebSocket.Server({ server });
 
 
 // Définir le dossier client comme public
-app.use(express.static(path.join(__dirname, 'client')));
+app.use(express.static('/var/www/tracking/client'));
+
 
 // Rediriger les requêtes vers index.html
 app.get('*', (req, res) => {
