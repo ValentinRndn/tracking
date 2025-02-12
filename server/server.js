@@ -15,14 +15,15 @@ const wss = new WebSocket.Server({ server });
 // Définir le dossier client comme public
 app.use(express.static('/var/www/tracking/client'));
 
-// Rediriger les requêtes vers index.html
+// Route spécifique pour config (avant la route générique)
+app.get('/config', (req, res) => {
+    res.json({ wsServer: process.env.WS_SERVER });
+});
+
+// Rediriger les requêtes vers index.html pour toute autre requête
 app.get('*', (req, res) => {
     // Utiliser le chemin absolu vers index.html dans /var/www/tracking/client
     res.sendFile(path.join('/var/www/tracking/client', 'index.html'));
-});
-
-app.get('/config', (req, res) => {
-    res.json({ wsServer: process.env.WS_SERVER });
 });
 
 let users = {};
