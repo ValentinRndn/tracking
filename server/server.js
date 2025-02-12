@@ -2,6 +2,8 @@ require('dotenv').config();
 const express = require('express');
 const http = require('http');
 const WebSocket = require('ws');
+const path = require('path');
+
 
 const app = express();
 const port = process.env.PORT || 5000;  
@@ -24,7 +26,6 @@ app.get('/config', (req, res) => {
     res.json({ wsServer: process.env.WS_SERVER });
 });
 
-app.use(express.static('./'));
 
 let users = {};
 
