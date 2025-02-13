@@ -6,14 +6,15 @@ const path = require('path');
 
 const app = express();
 const port = process.env.PORT || 5000;
-const hostUrl = process.env.HOST_URL || '0.0.0.0'; // Écouter sur toutes les interfaces
+// On écoute sur toutes les interfaces, ce qui permet à Nginx d'accéder à l'application
+const hostUrl = '0.0.0.0';
 
 const server = http.createServer(app);
 const wss = new WebSocket.Server({ noServer: true });
 
-let users = new Map(); // Stocker les utilisateurs avec un Map (plus sécurisé)
+let users = new Map(); // Stocker les utilisateurs de manière sécurisée
 
-// Gestion de l'upgrade HTTP -> WebSocket
+// Gestion de l'upgrade HTTP -> WebSocket (pour la route "/ws")
 server.on('upgrade', (request, socket, head) => {
     if (request.url === '/ws') {
         wss.handleUpgrade(request, socket, head, (ws) => {
@@ -24,20 +25,20 @@ server.on('upgrade', (request, socket, head) => {
     }
 });
 
-// Servir les fichiers statiques du client
+// Servir les fichiers statiques du client (situés dans /var/www/tracking/client)
 app.use(express.static('/var/www/tracking/client'));
 
-// Route pour obtenir la config WebSocket
+// Route pour obtenir la configuration WebSocket (doit renvoyer du JSON)
 app.get('/config', (req, res) => {
     res.json({ wsServer: process.env.WS_SERVER || 'wss://valentin.renaudin.caen.mds-project.fr/ws' });
 });
 
-// Redirection vers index.html pour les autres routes (SPA)
+// Pour toutes les autres routes, renvoyer index.html (pour une application SPA)
 app.get('*', (req, res) => {
     res.sendFile(path.join('/var/www/tracking/client', 'index.html'));
 });
 
-// WebSocket - Gestion des connexions
+// Gestion des connexions WebSocket
 wss.on('connection', (ws, request) => {
     const userId = request.socket.remoteAddress;
     console.log(`🔵 Utilisateur connecté : ${userId}`);
@@ -49,8 +50,7 @@ wss.on('connection', (ws, request) => {
             switch (data.type) {
                 case 'updatePosition':
                     users.set(ws, { lat: data.lat, lng: data.lng });
-
-                    // Diffuser la position à tous les clients sauf l'expéditeur
+                    // Diffuser à tous les clients sauf l'émetteur
                     wss.clients.forEach(client => {
                         if (client !== ws && client.readyState === WebSocket.OPEN) {
                             client.send(JSON.stringify({
@@ -62,20 +62,18 @@ wss.on('connection', (ws, request) => {
                         }
                     });
                     break;
-
                 case 'offer':
                 case 'answer':
                 case 'candidate':
-                    // Relayer directement les messages WebRTC
+                    // Relayer les messages WebRTC à tous les clients
                     wss.clients.forEach(client => {
                         if (client.readyState === WebSocket.OPEN) {
                             client.send(JSON.stringify(data));
                         }
                     });
                     break;
-
                 default:
-                    console.warn(`⚠️ Message inconnu reçu :`, data);
+                    console.warn('⚠️ Message inconnu reçu :', data);
             }
         } catch (err) {
             console.error('❌ Erreur WebSocket:', err);
@@ -88,7 +86,7 @@ wss.on('connection', (ws, request) => {
     });
 });
 
-// Démarrer le serveur
+// Démarrer le serveur sur 0.0.0.0
 server.listen(port, hostUrl, () => {
     console.log(`✅ Serveur en écoute sur http://${hostUrl}:${port}`);
 });
