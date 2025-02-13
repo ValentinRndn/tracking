@@ -6,13 +6,14 @@ const path = require('path');
 
 const app = express();
 const port = process.env.PORT || 5000;
-const hostUrl = process.env.HOST_URL || 'localhost';
+const hostUrl = process.env.HOST_URL || '0.0.0.0'; // Écouter sur toutes les interfaces
 
 const server = http.createServer(app);
-
-// Initialiser WebSocket sur /ws
 const wss = new WebSocket.Server({ noServer: true });
 
+let users = new Map(); // Stocker les utilisateurs avec un Map (plus sécurisé)
+
+// Gestion de l'upgrade HTTP -> WebSocket
 server.on('upgrade', (request, socket, head) => {
     if (request.url === '/ws') {
         wss.handleUpgrade(request, socket, head, (ws) => {
@@ -23,24 +24,23 @@ server.on('upgrade', (request, socket, head) => {
     }
 });
 
-// Définir le dossier client comme public
+// Servir les fichiers statiques du client
 app.use(express.static('/var/www/tracking/client'));
 
-// Route spécifique pour config
+// Route pour obtenir la config WebSocket
 app.get('/config', (req, res) => {
     res.json({ wsServer: process.env.WS_SERVER || 'wss://valentin.renaudin.caen.mds-project.fr/ws' });
 });
 
-
-// Rediriger toutes les autres requêtes vers index.html
+// Redirection vers index.html pour les autres routes (SPA)
 app.get('*', (req, res) => {
     res.sendFile(path.join('/var/www/tracking/client', 'index.html'));
 });
 
-let users = {};
-
-wss.on('connection', (ws) => {
-    console.log('Un utilisateur est connecté.');
+// WebSocket - Gestion des connexions
+wss.on('connection', (ws, request) => {
+    const userId = request.socket.remoteAddress;
+    console.log(`🔵 Utilisateur connecté : ${userId}`);
 
     ws.on('message', (message) => {
         try {
@@ -48,53 +48,47 @@ wss.on('connection', (ws) => {
 
             switch (data.type) {
                 case 'updatePosition':
-                    for (const client of wss.clients) {
-                        if (client.readyState === WebSocket.OPEN) {
+                    users.set(ws, { lat: data.lat, lng: data.lng });
+
+                    // Diffuser la position à tous les clients sauf l'expéditeur
+                    wss.clients.forEach(client => {
+                        if (client !== ws && client.readyState === WebSocket.OPEN) {
                             client.send(JSON.stringify({
                                 type: 'updatePosition',
-                                userId: ws._socket.remoteAddress,
+                                userId,
                                 lat: data.lat,
                                 lng: data.lng,
                             }));
                         }
-                    }
+                    });
                     break;
 
                 case 'offer':
                 case 'answer':
                 case 'candidate':
-                    for (const client of wss.clients) {
+                    // Relayer directement les messages WebRTC
+                    wss.clients.forEach(client => {
                         if (client.readyState === WebSocket.OPEN) {
                             client.send(JSON.stringify(data));
                         }
-                    }
+                    });
                     break;
 
                 default:
-                    console.log('Message inconnu reçu:', data);
+                    console.warn(`⚠️ Message inconnu reçu :`, data);
             }
         } catch (err) {
-            console.error('Erreur WebSocket:', err);
+            console.error('❌ Erreur WebSocket:', err);
         }
     });
 
     ws.on('close', () => {
-        console.log('Un utilisateur a quitté.');
+        console.log(`🔴 Utilisateur déconnecté : ${userId}`);
+        users.delete(ws);
     });
 });
 
-server.on('upgrade', (request, socket, head) => {
-    if (request.url === '/ws') {
-        wss.handleUpgrade(request, socket, head, (ws) => {
-            wss.emit('connection', ws, request);
-        });
-    } else {
-        socket.destroy();
-    }
-});
-
-
-
-server.listen(port, () => {
-    console.log(`Serveur en écoute sur http://${hostUrl}:${port}`);
+// Démarrer le serveur
+server.listen(port, hostUrl, () => {
+    console.log(`✅ Serveur en écoute sur http://${hostUrl}:${port}`);
 });
