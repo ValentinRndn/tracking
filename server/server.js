@@ -28,8 +28,9 @@ app.use(express.static('/var/www/tracking/client'));
 
 // Route spécifique pour config
 app.get('/config', (req, res) => {
-    res.json({ wsServer: `wss://${hostUrl}/ws` });
+    res.json({ wsServer: process.env.WS_SERVER || 'wss://valentin.renaudin.caen.mds-project.fr/ws' });
 });
+
 
 // Rediriger toutes les autres requêtes vers index.html
 app.get('*', (req, res) => {
@@ -81,6 +82,18 @@ wss.on('connection', (ws) => {
         console.log('Un utilisateur a quitté.');
     });
 });
+
+server.on('upgrade', (request, socket, head) => {
+    if (request.url === '/ws') {
+        wss.handleUpgrade(request, socket, head, (ws) => {
+            wss.emit('connection', ws, request);
+        });
+    } else {
+        socket.destroy();
+    }
+});
+
+
 
 server.listen(port, () => {
     console.log(`Serveur en écoute sur http://${hostUrl}:${port}`);
