@@ -1,92 +1,66 @@
-require('dotenv').config();
 const express = require('express');
 const http = require('http');
-const WebSocket = require('ws');
+const { Server } = require('socket.io');
 const path = require('path');
+const cors = require('cors');
 
 const app = express();
-const port = process.env.PORT || 5000;
-// On écoute sur toutes les interfaces, ce qui permet à Nginx d'accéder à l'application
-const hostUrl = '0.0.0.0';
-
 const server = http.createServer(app);
-const wss = new WebSocket.Server({ noServer: true });
 
-let users = new Map(); // Stocker les utilisateurs de manière sécurisée
+// Middleware CORS pour Express
+app.use(cors());
 
-// Gestion de l'upgrade HTTP -> WebSocket (pour la route "/ws")
-server.on('upgrade', (request, socket, head) => {
-    if (request.url === '/ws') {
-        wss.handleUpgrade(request, socket, head, (ws) => {
-            wss.emit('connection', ws, request);
-        });
-    } else {
-        socket.destroy();
-    }
+// Options CORS plus permissives
+app.use((req, res, next) => {
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS, PUT, DELETE');
+    res.setHeader('Access-Control-Allow-Credentials', 'true');
+    next();
 });
 
-// Servir les fichiers statiques du client (situés dans /var/www/tracking/client)
-app.use(express.static('/var/www/tracking/client'));
+app.use(express.static(path.join(__dirname, '../public')));
 
-// Route pour obtenir la configuration WebSocket (doit renvoyer du JSON)
-app.get('/config', (req, res) => {
-    res.json({ wsServer: process.env.WS_SERVER || 'wss://valentin.renaudin.caen.mds-project.fr/ws' });
+// Configuration Socket.IO
+const io = new Server(server, {
+    cors: {
+        origin: "http://127.0.0.1:5500",
+        methods: ["GET", "POST", "OPTIONS"],
+        allowedHeaders: ["*"],
+        credentials: true,
+    },
+    transport: ['websocket', 'polling']
 });
 
-// Pour toutes les autres routes, renvoyer index.html (pour une application SPA)
-app.get('*', (req, res) => {
-    res.sendFile(path.join('/var/www/tracking/client', 'index.html'));
-});
+app.use(express.static(path.join(__dirname, '../public')));
 
-// Gestion des connexions WebSocket
-wss.on('connection', (ws, request) => {
-    const userId = request.socket.remoteAddress;
-    console.log(`🔵 Utilisateur connecté : ${userId}`);
+const users = new Map();
 
-    ws.on('message', (message) => {
-        try {
-            const data = JSON.parse(message);
+io.on('connection', (socket) => {
+    console.log('User connected:', socket.id);
+    users.set(socket.id, { id: socket.id });
 
-            switch (data.type) {
-                case 'updatePosition':
-                    users.set(ws, { lat: data.lat, lng: data.lng });
-                    // Diffuser à tous les clients sauf l'émetteur
-                    wss.clients.forEach(client => {
-                        if (client !== ws && client.readyState === WebSocket.OPEN) {
-                            client.send(JSON.stringify({
-                                type: 'updatePosition',
-                                userId,
-                                lat: data.lat,
-                                lng: data.lng,
-                            }));
-                        }
-                    });
-                    break;
-                case 'offer':
-                case 'answer':
-                case 'candidate':
-                    // Relayer les messages WebRTC à tous les clients
-                    wss.clients.forEach(client => {
-                        if (client.readyState === WebSocket.OPEN) {
-                            client.send(JSON.stringify(data));
-                        }
-                    });
-                    break;
-                default:
-                    console.warn('⚠️ Message inconnu reçu :', data);
-            }
-        } catch (err) {
-            console.error('❌ Erreur WebSocket:', err);
+    socket.on('updateLocation', ({ userId, location }) => {
+        if (users.has(userId)) {
+            users.get(userId).location = location;
+            io.emit('usersUpdate', Array.from(users.values()));
         }
     });
 
-    ws.on('close', () => {
-        console.log(`🔴 Utilisateur déconnecté : ${userId}`);
-        users.delete(ws);
+    socket.on('signal', ({ target, signal }) => {
+        io.to(target).emit('signal', {
+            signal,
+            from: socket.id
+        });
+    });
+
+    socket.on('disconnect', () => {
+        users.delete(socket.id);
+        io.emit('usersUpdate', Array.from(users.values()));
     });
 });
 
-// Démarrer le serveur sur 0.0.0.0
-server.listen(port, hostUrl, () => {
-    console.log(`✅ Serveur en écoute sur http://${hostUrl}:${port}`);
+const PORT = process.env.PORT || 3000;
+server.listen(PORT, () => {
+    console.log(`Server running on port ${PORT}`);
 });
