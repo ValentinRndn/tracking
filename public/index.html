@@ -7,19 +7,40 @@
     <link href="assets/css/style.css" rel="stylesheet">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <script src="https://cdn.socket.io/4.6.0/socket.io.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/simple-peer/9.11.1/simplepeer.min.js"></script>
 </head>
-<body class="bg-gray-100">
+<body class="bg-gradient-to-br from-gray-900 to-gray-800 text-white">
     <div class="min-h-screen flex flex-col">
         <!-- Header -->
-        <header class="bg-white shadow-sm">
-            <div class="max-w-7xl mx-auto px-4 py-4">
+        <header class="bg-gray-800 border-b border-gray-700">
+            <div class="max-w-7xl mx-auto px-6 py-5">
                 <div class="flex justify-between items-center">
-                    <h1 class="text-2xl font-bold text-gray-900">GeoMeet</h1>
-                    <div class="flex items-center space-x-4">
-                        <span id="connectionStatus" class="text-green-500">●</span>
-                        <span id="userCount" class="text-gray-600">0 utilisateurs</span>
+                    <div class="flex items-center space-x-3">
+                        <svg class="w-8 h-8 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                                  d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                                  d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/>
+                        </svg>
+                        <h1 class="text-3xl font-bold bg-gradient-to-r from-emerald-400 to-blue-500 bg-clip-text text-transparent">
+                            GeoMeet
+                        </h1>
+                    </div>
+                    <div class="flex items-center space-x-6 bg-gray-700 px-4 py-2 rounded-full shadow-lg">
+                        <div class="flex items-center space-x-2">
+                            <span id="connectionStatus" class="flex h-3 w-3">
+                                <span class="animate-ping absolute inline-flex h-3 w-3 rounded-full bg-emerald-400 opacity-75"></span>
+                                <span class="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"></span>
+                            </span>
+                            <span class="text-sm font-medium text-gray-200">En ligne</span>
+                        </div>
+                        <div class="flex items-center space-x-2 border-l border-gray-600 pl-6">
+                            <svg class="w-5 h-5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                                      d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/>
+                            </svg>
+                            <span id="userCount" class="text-sm font-medium text-gray-200">0 utilisateurs</span>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -27,39 +48,58 @@
 
         <!-- Main Content -->
         <main class="flex-1 relative">
-            <div id="map" class="w-full h-[calc(100vh-4rem)]"></div>
+            <div class="relative w-full h-[calc(100vh-80px)]">
+                <div id="map" class="w-full h-full absolute inset-0 z-10 rounded-lg shadow-xl m-4"></div>
+            </div>
             
             <!-- Video Call Container -->
-            <div id="videoCallContainer" class="hidden fixed right-0 top-16 w-full md:w-1/3 h-[calc(100vh-4rem)] bg-white shadow-lg">
-                <div class="p-4 h-full flex flex-col">
-                    <div class="flex justify-between items-center mb-4">
-                        <h2 class="text-xl font-bold">Appel vidéo</h2>
-                        <button id="closeCall" class="p-2 rounded-full hover:bg-gray-100">
-                            <svg class="w-6 h-6 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+            <div id="videoCallContainer" class="hidden fixed right-4 top-24 w-full md:w-1/3 h-[calc(100vh-8rem)] 
+                                              bg-gray-800 shadow-2xl rounded-2xl z-20 border border-gray-700">
+                <div class="p-6 h-full flex flex-col">
+                    <div class="flex justify-between items-center mb-6">
+                        <div class="flex items-center space-x-3">
+                            <svg class="w-6 h-6 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                                      d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"/>
+                            </svg>
+                            <h2 class="text-xl font-bold text-gray-100">Appel vidéo</h2>
+                        </div>
+                        <button id="closeCall" class="p-2 rounded-full hover:bg-gray-700 transition-colors">
+                            <svg class="w-6 h-6 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
                             </svg>
                         </button>
                     </div>
                     
                     <div class="flex-1 grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <video id="localVideo" autoplay playsinline muted class="w-full bg-black rounded-lg"></video>
-                        <video id="remoteVideo" autoplay playsinline class="w-full bg-black rounded-lg"></video>
+                        <video id="localVideo" autoplay playsinline muted 
+                               class="w-full bg-gray-900 rounded-xl shadow-inner border border-gray-700"></video>
+                        <video id="remoteVideo" autoplay playsinline 
+                               class="w-full bg-gray-900 rounded-xl shadow-inner border border-gray-700"></video>
                     </div>
                     
-                    <div class="mt-4 flex justify-center space-x-4">
-                        <button id="toggleAudio" class="p-3 rounded-full bg-gray-200 hover:bg-gray-300">
-                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
+                    <div class="mt-6 flex justify-center space-x-4">
+                        <button id="toggleAudio" 
+                                class="p-4 rounded-full bg-gray-700 hover:bg-gray-600 transition-colors shadow-lg 
+                                       border border-gray-600">
+                            <svg class="w-6 h-6 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                                      d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"/>
                             </svg>
                         </button>
-                        <button id="toggleVideo" class="p-3 rounded-full bg-gray-200 hover:bg-gray-300">
-                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                        <button id="toggleVideo" 
+                                class="p-4 rounded-full bg-gray-700 hover:bg-gray-600 transition-colors shadow-lg 
+                                       border border-gray-600">
+                            <svg class="w-6 h-6 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                                      d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"/>
                             </svg>
                         </button>
-                        <button id="endCall" class="p-3 rounded-full bg-red-500 hover:bg-red-600 text-white">
-                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 8l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2M5 3a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2V5a2 2 0 00-2-2H5z" />
+                        <button id="endCall" 
+                                class="p-4 rounded-full bg-red-500 hover:bg-red-600 transition-colors shadow-lg">
+                            <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                                      d="M6 18L18 6M6 6l12 12"/>
                             </svg>
                         </button>
                     </div>
@@ -67,9 +107,65 @@
             </div>
         </main>
     </div>
-
+    
+    <script src="https://cdn.socket.io/4.6.0/socket.io.min.js"></script>
     <script src="assets/js/socket.js"></script>
     <script src="assets/js/webrtc.js"></script>
     <script src="assets/js/map.js"></script>
 </body>
 </html>
+
+<style>
+    #map {
+        min-height: 300px;
+        height: calc(100% - 2rem);
+        width: calc(100% - 2rem);
+        z-index: 1;
+        backdrop-filter: blur(8px);
+    }
+
+    .leaflet-tile-container {
+        filter: none !important;
+    }
+
+    .leaflet-popup-content {
+        margin: 13px;
+        min-width: 200px;
+    }
+
+    .leaflet-popup-content-wrapper {
+        background: rgba(31, 41, 55, 0.95);
+        color: white;
+        border-radius: 1rem;
+        backdrop-filter: blur(8px);
+    }
+
+    .leaflet-popup-tip {
+        background: rgba(31, 41, 55, 0.95);
+    }
+
+    .leaflet-container a.leaflet-popup-close-button {
+        color: #fff;
+    }
+
+    .leaflet-control-zoom a {
+        background: rgba(31, 41, 55, 0.9);
+        color: white;
+        border: 1px solid rgba(75, 85, 99, 0.4);
+    }
+
+    .leaflet-control-zoom a:hover {
+        background: rgba(55, 65, 81, 0.9);
+    }
+
+    /* Animation pour le status de connexion */
+    @keyframes pulse {
+        0% { transform: scale(1); }
+        50% { transform: scale(1.1); }
+        100% { transform: scale(1); }
+    }
+
+    #connectionStatus {
+        animation: pulse 2s infinite;
+    }
+</style>

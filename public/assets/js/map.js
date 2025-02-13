@@ -3,29 +3,42 @@ let markers = new Map();
 let currentPosition = null;
 
 function initMap() {
-    map = L.map('map').setView([48.8566, 2.3522], 13);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '© OpenStreetMap contributors'
-    }).addTo(map);
+    console.log('Initialisation de la carte...');
+    try {
+        map = L.map('map').setView([48.8566, 2.3522], 13);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© OpenStreetMap contributors'
+        }).addTo(map);
+        console.log('Carte initialisée avec succès');
 
-    // Get user's position
-    if (navigator.geolocation) {
-        navigator.geolocation.watchPosition(
-            position => {
-                currentPosition = {
-                    lat: position.coords.latitude,
-                    lng: position.coords.longitude
-                };
-                socketConnection.emit('updateLocation', {
-                    userId: socketConnection.id,
-                    location: currentPosition
-                });
-                updateUserMarker(socketConnection.id, currentPosition);
-            },
-            error => console.error('Error getting location:', error),
-            { enableHighAccuracy: true }
-        );
+        if (navigator.geolocation) {
+            navigator.geolocation.watchPosition(
+                position => {
+                    console.log('Position obtenue:', position);
+                    currentPosition = {
+                        lat: position.coords.latitude,
+                        lng: position.coords.longitude
+                    };
+                    socketConnection.emit('updateLocation', {
+                        userId: socketConnection.id,
+                        location: currentPosition
+                    });
+                    updateUserMarker(socketConnection.id, currentPosition);
+                },
+                error => console.error('Erreur de géolocalisation:', error),
+                { enableHighAccuracy: true }
+            );
+        }
+    } catch (error) {
+        console.error('Erreur lors de l\'initialisation de la carte:', error);
     }
+}
+
+// Assurez-vous que la carte n'est initialisée qu'une fois le DOM chargé
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initMap);
+} else {
+    initMap();
 }
 
 function updateUserMarker(userId, location) {
@@ -55,6 +68,3 @@ function removeUserMarker(userId) {
         markers.delete(userId);
     }
 }
-
-// Initialize map when page loads
-document.addEventListener('DOMContentLoaded', initMap);

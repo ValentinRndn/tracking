@@ -1,48 +1,54 @@
+// server.js
 const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
-const path = require('path');
 const cors = require('cors');
+const WebSocket = require('ws');
 
 const app = express();
 const server = http.createServer(app);
 
-// Middleware CORS pour Express
-app.use(cors());
-
-// Options CORS plus permissives
-app.use((req, res, next) => {
-    res.setHeader('Access-Control-Allow-Origin', '*');
-    res.setHeader('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept');
-    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS, PUT, DELETE');
-    res.setHeader('Access-Control-Allow-Credentials', 'true');
-    next();
-});
-
-app.use(express.static(path.join(__dirname, '../public')));
+// Configuration CORS
+app.use(cors({
+    origin: "http://127.0.0.1:5500",
+    methods: ["GET", "POST"],
+    credentials: true
+}));
 
 // Configuration Socket.IO
 const io = new Server(server, {
     cors: {
         origin: "http://127.0.0.1:5500",
-        methods: ["GET", "POST", "OPTIONS"],
-        allowedHeaders: ["*"],
-        credentials: true,
+        methods: ["GET", "POST"],
+        credentials: true
     },
-    transport: ['websocket', 'polling']
+    transports: ['polling', 'websocket'],
+    pingTimeout: 60000,
+    pingInterval: 25000
 });
 
-app.use(express.static(path.join(__dirname, '../public')));
+// Test route
+app.get('/', (req, res) => {
+    res.send('Server is running');
+});
 
 const users = new Map();
 
+// Gestion des connexions Socket.IO
 io.on('connection', (socket) => {
-    console.log('User connected:', socket.id);
-    users.set(socket.id, { id: socket.id });
+    console.log('New client connected:', socket.id);
+
+        // Ajoutez l'utilisateur à la Map
+        users.set(socket.id, { id: socket.id });
+    
+        // Émettez immédiatement la mise à jour des utilisateurs
+        console.log('Emitting usersUpdate event after connection', Array.from(users.values()));
+        io.emit('usersUpdate', Array.from(users.values()));
 
     socket.on('updateLocation', ({ userId, location }) => {
         if (users.has(userId)) {
             users.get(userId).location = location;
+            console.log('Emitting usersUpdate event after location update', Array.from(users.values()));
             io.emit('usersUpdate', Array.from(users.values()));
         }
     });
@@ -55,12 +61,24 @@ io.on('connection', (socket) => {
     });
 
     socket.on('disconnect', () => {
+        console.log('Client disconnected:', socket.id);
         users.delete(socket.id);
         io.emit('usersUpdate', Array.from(users.values()));
+    });
+
+    // Gestion des erreurs
+    socket.on('error', (error) => {
+        console.error('Socket error:', error);
     });
 });
 
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
-    console.log(`Server running on port ${PORT}`);
+    console.log(`Server is running on port ${PORT}`);
+});
+
+// Gestion des erreurs serveur
+server.on('error', (error) => {
+    console.error('Server error:', error);
+
 });

@@ -1,9 +1,11 @@
 // socket.js
 const socketConnection = io('http://localhost:3000', {
     withCredentials: true,
-    extraHeaders: {
-        "Access-Control-Allow-Origin": "*"
-    }
+    transports: ['websocket', 'polling'],
+    path: '/socket.io/',
+    reconnection: true,
+    reconnectionAttempts: 5,
+    reconnectionDelay: 1000,
 });
 
 // Exportons socket pour l'utiliser dans les autres fichiers
