@@ -1,28 +1,38 @@
-require('dotenv').config();  
+require('dotenv').config();
 const express = require('express');
 const http = require('http');
 const WebSocket = require('ws');
 const path = require('path');
 
 const app = express();
-const port = process.env.PORT || 5000;  
-const hostUrl = process.env.HOST_URL || 'localhost';  
+const port = process.env.PORT || 5000;
+const hostUrl = process.env.HOST_URL || 'localhost';
 
 const server = http.createServer(app);
 
-const wss = new WebSocket.Server({ server });
+// Initialiser WebSocket sur /ws
+const wss = new WebSocket.Server({ noServer: true });
+
+server.on('upgrade', (request, socket, head) => {
+    if (request.url === '/ws') {
+        wss.handleUpgrade(request, socket, head, (ws) => {
+            wss.emit('connection', ws, request);
+        });
+    } else {
+        socket.destroy();
+    }
+});
 
 // Définir le dossier client comme public
 app.use(express.static('/var/www/tracking/client'));
 
-// Route spécifique pour config (avant la route générique)
+// Route spécifique pour config
 app.get('/config', (req, res) => {
-    res.json({ wsServer: process.env.WS_SERVER });
+    res.json({ wsServer: `wss://${hostUrl}/ws` });
 });
 
-// Rediriger les requêtes vers index.html pour toute autre requête
+// Rediriger toutes les autres requêtes vers index.html
 app.get('*', (req, res) => {
-    // Utiliser le chemin absolu vers index.html dans /var/www/tracking/client
     res.sendFile(path.join('/var/www/tracking/client', 'index.html'));
 });
 
@@ -32,46 +42,46 @@ wss.on('connection', (ws) => {
     console.log('Un utilisateur est connecté.');
 
     ws.on('message', (message) => {
-        const data = JSON.parse(message);
+        try {
+            const data = JSON.parse(message);
 
-        switch (data.type) {
-            case 'updatePosition':
-                const { lat, lng } = data;
-                users[ws] = { lat, lng };
-
-                for (const client of wss.clients) {
-                    if (client !== ws && client.readyState === WebSocket.OPEN) {
-                        client.send(JSON.stringify({
-                            type: 'updatePosition',
-                            userId: ws._socket.remoteAddress,
-                            lat,
-                            lng,
-                        }));
+            switch (data.type) {
+                case 'updatePosition':
+                    for (const client of wss.clients) {
+                        if (client.readyState === WebSocket.OPEN) {
+                            client.send(JSON.stringify({
+                                type: 'updatePosition',
+                                userId: ws._socket.remoteAddress,
+                                lat: data.lat,
+                                lng: data.lng,
+                            }));
+                        }
                     }
-                }
-                break;
+                    break;
 
-            case 'offer':
-            case 'answer':
-            case 'candidate':
-                for (const client of wss.clients) {
-                    if (client.readyState === WebSocket.OPEN) {
-                        client.send(JSON.stringify(data));
+                case 'offer':
+                case 'answer':
+                case 'candidate':
+                    for (const client of wss.clients) {
+                        if (client.readyState === WebSocket.OPEN) {
+                            client.send(JSON.stringify(data));
+                        }
                     }
-                }
-                break;
+                    break;
 
-            default:
-                console.log('Message inconnu reçu:', data);
+                default:
+                    console.log('Message inconnu reçu:', data);
+            }
+        } catch (err) {
+            console.error('Erreur WebSocket:', err);
         }
     });
 
     ws.on('close', () => {
         console.log('Un utilisateur a quitté.');
-        delete users[ws];
     });
 });
 
 server.listen(port, () => {
-    console.log(`Serveur express en écoute sur http://${hostUrl}:${port}`);
+    console.log(`Serveur en écoute sur http://${hostUrl}:${port}`);
 });
