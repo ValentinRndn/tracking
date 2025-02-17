@@ -48,6 +48,16 @@
                         </div>
                     </div>
                 </div>
+
+                <!-- Ajouter dans le header, juste avant la fermeture -->
+                <div class="flex items-center space-x-4 bg-gray-700/50 px-4 py-2 rounded-full shadow-lg backdrop-blur-sm">
+                    <div id="accelerometer-data" class="text-sm font-medium text-gray-200 flex items-center space-x-2">
+                        <svg class="w-5 h-5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z"/>
+                        </svg>
+                        <span>Accéléromètre: Inactif</span>
+                    </div>
+                </div>
             </header>
 
         <!-- Main Content -->
@@ -116,79 +126,77 @@
     <script src="assets/js/socket.js"></script>
     <script src="assets/js/webrtc.js"></script>
     <script src="assets/js/map.js"></script>
+    <script src="assets/js/accelerometer.js"></script>
+
 </body>
 </html>
 
 <style>
-    #map {
-        min-height: 300px;
-        height: calc(100% - 2rem);
-        width: calc(100% - 2rem);
-        z-index: 1;
-        backdrop-filter: blur(8px);
+body {
+    overflow-x: hidden;
+}
+
+.min-h-screen {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+}
+
+header {
+    position: relative;
+    z-index: 10;
+    padding-bottom: 0.5rem;
+}
+
+header > div:last-child {
+    margin-top: 0.5rem;
+    display: flex;
+    justify-content: center;
+}
+
+#map {
+    min-height: 300px;
+    height: calc(100vh - 150px);
+    width: 100%;
+    position: relative;
+    z-index: 1;
+}
+
+#videoCallContainer {
+    z-index: 9999 !important;
+    position: fixed;
+    right: 1rem;
+    top: 6rem;
+    width: 100%;
+    max-width: 400px;
+    height: auto;
+    background: rgba(31, 41, 55, 0.95);
+    padding: 1rem;
+    border-radius: 1rem;
+    backdrop-filter: blur(10px);
+}
+
+#videoCallContainer video {
+    width: 100%;
+    height: auto;
+    max-height: 200px;
+    border-radius: 0.5rem;
+    object-fit: cover;
+}
+
+@media (max-width: 640px) {
+    header .flex {
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
     }
 
-    /* Augmenter le z-index du conteneur vidéo */
     #videoCallContainer {
-        z-index: 9999 !important;
+        width: calc(100% - 2rem);
+        left: 1rem;
+        right: 1rem;
+        top: 5rem;
     }
+}
 
-    /* Reste des styles inchangé */
-    .leaflet-tile-container {
-        filter: none !important;
-    }
-
-    .leaflet-popup-content {
-        margin: 13px;
-        min-width: 200px;
-    }
-
-    .leaflet-popup-content-wrapper {
-        background: rgba(31, 41, 55, 0.95);
-        color: white;
-        border-radius: 1rem;
-        backdrop-filter: blur(8px);
-    }
-
-    .leaflet-popup-tip {
-        background: rgba(31, 41, 55, 0.95);
-    }
-
-    .leaflet-container a.leaflet-popup-close-button {
-        color: #fff;
-    }
-
-    .leaflet-control-zoom a {
-        background: rgba(31, 41, 55, 0.9);
-        color: white;
-        border: 1px solid rgba(75, 85, 99, 0.4);
-    }
-
-    .leaflet-control-zoom a:hover {
-        background: rgba(55, 65, 81, 0.9);
-    }
-
-    @keyframes pulse {
-        0% { transform: scale(1); }
-        50% { transform: scale(1.1); }
-        100% { transform: scale(1); }
-    }
-
-    #connectionStatus {
-        animation: pulse 2s infinite;
-    }
-
-    /* Ajout de styles pour améliorer la responsive */
-    @media (max-width: 640px) {
-        .header-content {
-            flex-direction: column;
-            gap: 1rem;
-        }
-        
-        #videoCallContainer {
-            width: calc(100% - 2rem) !important;
-            right: 1rem !important;
-            left: 1rem !important;
-        }
-    }
 </style>
